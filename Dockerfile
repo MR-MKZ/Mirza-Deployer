@@ -15,10 +15,13 @@ RUN apt-get update && apt-get install -y \
     cron \
     supervisor \
     default-mysql-client \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
 RUN docker-php-ext-install mysqli pdo_mysql mbstring exif pcntl bcmath gd zip intl soap
+
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 
 RUN pecl install ssh2-1.3.1 \
     && docker-php-ext-enable ssh2
