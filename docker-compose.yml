@@ -1,31 +1,31 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: mirzabot_app
-    restart: always
-    working_dir: /var/www/html
-    environment:
-      - DB_HOST=db
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - API_KEY=${BOT_TOKEN}
-      - ADMIN_ID=${ADMIN_ID}
-      - BOT_USERNAME=${BOT_USERNAME}
-      - DOMAIN_HOST=${DOMAIN}
-      # Set to "latest" or a specific tag like "0.1"
-      - BOT_VERSION=${BOT_VERSION:-latest}
-    volumes:
-      - ./entrypoint.sh:/usr/local/bin/entrypoint.sh
-      # We use a named volume for code so it persists between restarts
-      - mirzabot_code:/var/www/html
-    entrypoint: ["/usr/local/bin/entrypoint.sh"]
-    depends_on:
-      - db
-    networks:
-      - mirzanet
+ app:
+   build:
+     context: .
+     dockerfile: Dockerfile
+   container_name: mirzabot_app
+   restart: always
+   working_dir: /var/www/html
+   environment:
+     - DB_HOST=db
+     - DB_NAME=${DB_NAME}
+     - DB_USER=${DB_USER}
+     - DB_PASS=${DB_PASS}
+     - API_KEY=${BOT_TOKEN}
+     - ADMIN_ID=${ADMIN_ID}
+     - BOT_USERNAME=${BOT_USERNAME}
+     - DOMAIN_HOST=${DOMAIN}
+  #    Set to "latest" or a specific tag like "0.1"
+     - BOT_VERSION=${BOT_VERSION:-latest}
+   volumes:
+     - ./entrypoint.sh:/usr/local/bin/entrypoint.sh
+ #     We use a named volume for code so it persists between restarts
+     - mirzabot_code:/var/www/html/mirzaprobotconfig
+   entrypoint: ["/usr/local/bin/entrypoint.sh"]
+   depends_on:
+     - db
+   networks:
+     - mirzanet
 
   web:
     image: nginx:alpine
@@ -38,7 +38,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - mirzabot_code:/var/www/html
+      - mirzabot_code:/var/www/html/mirzaprobotconfig
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./ssl:/etc/nginx/ssl:ro # mount certs
     depends_on:
@@ -46,19 +46,33 @@ services:
     networks:
       - mirzanet
 
-  db:
-    image: mariadb:10.6
-    container_name: mirzabot_db
-    restart: always
-    environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASS}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
-    volumes:
-      - mirzadb_data:/var/lib/mysql
-    networks:
-      - mirzanet
+ db:
+   image: mysql:8.0
+   container_name: mirzabot_db
+   restart: always
+   command: --default-authentication-plugin=mysql_native_password
+   environment:
+     MYSQL_DATABASE: ${DB_NAME}
+     MYSQL_USER: ${DB_USER}
+     MYSQL_PASSWORD: ${DB_PASS}
+     MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+   volumes:
+     - mirzadb_data:/var/lib/mysql
+   networks:
+     - mirzanet
+
+ pma:
+   image: phpmyadmin/phpmyadmin
+   container_name: mirzabot_pma
+   restart: always
+   environment:
+     PMA_HOST: db
+     PMA_USER: ${DB_USER}
+     PMA_PASSWORD: ${DB_PASS}
+#      This helps phpmyadmin know it's behind a reverse proxy
+     PMA_ABSOLUTE_URI: https://nightmare.qzz.io/phpmyadmin/
+   networks:
+     - mirzanet
 
 networks:
   mirzanet:

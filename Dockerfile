@@ -11,13 +11,14 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     libssh2-1-dev \
+    libicu-dev \
     cron \
     supervisor \
     default-mysql-client \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl soap
+RUN docker-php-ext-install mysqli pdo_mysql mbstring exif pcntl bcmath gd zip intl soap
 
 RUN pecl install ssh2-1.3.1 \
     && docker-php-ext-enable ssh2
