@@ -34,9 +34,6 @@ RUN install-php-extensions \
     soap \
     ssh2
 
-RUN pecl install ssh2-1.3.1 \
-    && docker-php-ext-enable ssh2
-
 RUN echo "max_execution_time = 300" > /usr/local/etc/php/conf.d/timeout.ini \
     && echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/memory.ini
 
