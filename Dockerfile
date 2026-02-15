@@ -19,12 +19,26 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-install -j$(nproc) mysqli pdo_mysql mbstring exif pcntl bcmath gd zip intl soap
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
+RUN install-php-extensions \
+    gd \
+    mysqli \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    zip \
+    intl \
+    soap \
+    ssh2
 
 RUN pecl install ssh2-1.3.1 \
     && docker-php-ext-enable ssh2
+
+RUN echo "max_execution_time = 300" > /usr/local/etc/php/conf.d/timeout.ini \
+    && echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/memory.ini
 
 RUN mkdir -p /var/log/supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
