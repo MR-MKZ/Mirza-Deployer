@@ -38,7 +38,7 @@ RUN echo "max_execution_time = 300" > /usr/local/etc/php/conf.d/timeout.ini \
     && echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/memory.ini
 
 RUN mkdir -p /var/log/supervisor
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY ./configs/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 RUN echo "* * * * * cd /var/www/html && /usr/local/bin/php cronbot/cron.php >> /var/log/cron.log 2>&1" > /etc/cron.d/mirzabot-cron
 RUN chmod 0644 /etc/cron.d/mirzabot-cron
