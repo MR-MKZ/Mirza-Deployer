@@ -91,7 +91,7 @@ if [ ! -f "$CONFIG_FILE" ] || grep -q "{database_name}" "$CONFIG_FILE"; then
 
 // This variable added for high load panels which their response time is long and bot can't communicate with online panel!
 // null for default settings
-\$request_exec_timeout = ${REQUEST_TIMEOUT};
+\$request_exec_timeout = ${REQUEST_TIMEOUT:-null};
 \$dbhost = '${DB_HOST}';
 \$dbname = '${DB_NAME}';
 \$usernamedb = '${DB_USER}';
