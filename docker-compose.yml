@@ -15,10 +15,9 @@ services:
       - ADMIN_ID=${ADMIN_ID}
       - BOT_USERNAME=${BOT_USERNAME}
       - DOMAIN_HOST=${DOMAIN}
-      # Set to "latest" or a specific tag like "0.1"
       - BOT_VERSION=${BOT_VERSION:-latest}
     volumes:
-      - ./entrypoint.sh:/usr/local/bin/entrypoint.sh
+      - ./scripts/entrypoint.sh:/usr/local/bin/entrypoint.sh
       - mirzabot_code:/var/www/html/mirzaprobotconfig
     entrypoint: ["/usr/local/bin/entrypoint.sh"]
     depends_on:
@@ -33,13 +32,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      # Change to whatever port you want this gateway to listen on
       - "80:80"
       - "443:443"
     volumes:
       - mirzabot_code:/var/www/html/mirzaprobotconfig
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./ssl:/etc/nginx/ssl:ro # mount certs
+      - ./configs/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - app
     networks:
