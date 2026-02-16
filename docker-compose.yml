@@ -7,7 +7,8 @@ services:
     restart: always
     working_dir: /var/www/html
     environment:
-      - DB_HOST=db
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT}
+      - DB_HOST=${DB_HOST}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
