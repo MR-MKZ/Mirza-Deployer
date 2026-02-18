@@ -14,10 +14,17 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     cron \
     supervisor \
-    mysql-client \
     libjpeg62-turbo-dev \
     libfreetype6-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Add Oracle MySQL APT repository
+RUN curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 | gpg --dearmor -o /usr/share/keyrings/mysql.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian $(lsb_release -cs) mysql-8.0" \
+    > /etc/apt/sources.list.d/mysql.list
+
+RUN apt-get update && apt-get install -y mysql-client \
+    && rm -rf /var/lib/apt/lists/
 
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
