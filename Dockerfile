@@ -1,3 +1,5 @@
+FROM mysql:8.0 AS mysql-client
+
 FROM php:8.2-fpm
 
 RUN apt-get update && apt-get install -y \
@@ -18,10 +20,13 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     libjpeg62-turbo-dev \
     libfreetype6-dev \
+    libncurses6 \
+    libtinfo6 \
+    libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=mysql:8.0 /usr/bin/mysql /usr/bin/mysql
-COPY --from=mysql:8.0 /usr/bin/mysqldump /usr/bin/mysqldump
+COPY --from=mysql-client /usr/bin/mysql /usr/bin/mysql
+COPY --from=mysql-client /usr/bin/mysqldump /usr/bin/mysqldump
 
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
 
