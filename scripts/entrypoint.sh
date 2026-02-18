@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REPO_OWNER="MR-MKZ"
+REPO_OWNER="mahdiMGF2"
 REPO_NAME="mirzabot"
 INSTALL_DIR="/var/www/html"
 BOT_SUBDIR="mirzaprobotconfig"
