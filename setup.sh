@@ -29,7 +29,8 @@ setup_domain() {
 
     # Load variables from .env if it exists
     if [ -f "$ENV_FILE" ]; then
-        export "$(grep -v '^#' "$ENV_FILE" | xargs)"
+        # shellcheck disable=SC2046
+        export $(grep -v '^#' "$ENV_FILE" | xargs)
         DOMAIN_VAR=$DOMAIN
     fi
 
@@ -84,6 +85,7 @@ generate_ssl() {
     chmod +x "$ssl_script"
     ./"$ssl_script" "$CLEAN_DOMAIN"
     
+    # shellcheck disable=SC2181
     if [ $? -ne 0 ]; then
         echo -e "${RED}❌ SSL Generation failed. Aborting setup.${NC}"
         exit 1
