@@ -11,81 +11,103 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${GREEN}🚀 Starting Environment Setup...${NC}"
+check_dependencies() {
+    echo -e "${YELLOW}🔍 Checking dependencies...${NC}"
+    local dependencies=(docker curl sed)
+    for cmd in "${dependencies[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            echo -e "${RED}❌ Error: $cmd is not installed.${NC}"
+            exit 1
+        fi
+    done
+    echo -e "${GREEN}✅ Dependencies met.${NC}"
+}
 
-if [ -f "$ENV_FILE" ]; then
-    export "$(grep -v '^#' "$ENV_FILE" | xargs)"
-    DOMAIN_VAR=$DOMAIN
-fi
+setup_domain() {
+    ENV_FILE=".env"
+    DOMAIN_VAR=""
 
-echo -e "${YELLOW}🔍 Checking dependencies...${NC}"
-DEPENDENCIES=(docker curl sed)
-for cmd in "${DEPENDENCIES[@]}"; do
-    if ! command -v "$cmd" &> /dev/null; then
-        echo -e "${RED}❌ Error: $cmd is not installed.${NC}"
+    # Load variables from .env if it exists
+    if [ -f "$ENV_FILE" ]; then
+        export "$(grep -v '^#' "$ENV_FILE" | xargs)"
+        DOMAIN_VAR=$DOMAIN
+    fi
+
+    if [ -z "$DOMAIN_VAR" ] && [ -f "$ENV_FILE" ]; then
+        DOMAIN_VAR=$(grep "^DOMAIN=" "$ENV_FILE" | cut -d '=' -f2-)
+    fi
+
+    if [ -z "$DOMAIN_VAR" ]; then
+        echo -e "${YELLOW}⚠️  Domain not found in .env file.${NC}"
+        read -r -p "👉 Enter your domain (e.g., bot.example.com): " USER_INPUT
+        
+        if [ -z "$USER_INPUT" ]; then
+            echo -e "${RED}❌ Error: Domain cannot be empty.${NC}"
+            exit 1
+        fi
+        
+        DOMAIN_VAR=$USER_INPUT
+        
+        if [ ! -f "$ENV_FILE" ]; then
+            echo "DOMAIN=$DOMAIN_VAR" > "$ENV_FILE"
+            echo -e "${GREEN}✅ Created .env file with DOMAIN=$DOMAIN_VAR${NC}"
+        else
+            echo "" >> "$ENV_FILE"
+            echo "DOMAIN=$DOMAIN_VAR" >> "$ENV_FILE"
+            echo -e "${GREEN}✅ Added DOMAIN to existing .env${NC}"
+        fi
+    fi
+
+    CLEAN_DOMAIN="${DOMAIN_VAR#*://}"
+    CLEAN_DOMAIN="${CLEAN_DOMAIN%/}"
+    echo -e "${GREEN}🎯 Target Domain: $CLEAN_DOMAIN${NC}"
+}
+
+generate_ssl() {
+    if [ -f "./ssl/$CLEAN_DOMAIN.crt" ] && [ -f "./ssl/$CLEAN_DOMAIN.key" ]; then
+        echo -e "${YELLOW}⚠️  SSL certificates for $CLEAN_DOMAIN already exist in the ./ssl directory.${NC}"
+        read -r -p "👉 Do you want to regenerate them? (y/N): " REGEN_SSL
+        
+        if [[ ! "$REGEN_SSL" =~ ^[Yy]$ ]]; then
+            echo -e "${GREEN}✅ Skipping SSL generation.${NC}"
+            return 0 
+        fi
+    fi
+
+    local ssl_script="./scripts/gen-ssl.sh"
+    if [ ! -f "$ssl_script" ]; then
+        echo -e "${RED}❌ Error: $ssl_script not found in current directory.${NC}"
         exit 1
     fi
-done
-echo -e "${GREEN}✅ Dependencies met.${NC}"
 
-ENV_FILE=".env"
-DOMAIN_VAR=""
-
-if [ -f "$ENV_FILE" ]; then
-    DOMAIN_VAR=$(grep "^DOMAIN=" "$ENV_FILE" | cut -d '=' -f2-)
-fi
-
-if [ -z "$DOMAIN_VAR" ]; then
-    echo -e "${YELLOW}⚠️  Domain not found in .env file.${NC}"
-    read -r -p "👉 Enter your domain (e.g., bot.example.com): " USER_INPUT
+    echo -e "${YELLOW}🔐 Running SSL generation script...${NC}"
+    chmod +x "$ssl_script"
+    ./"$ssl_script" "$CLEAN_DOMAIN"
     
-    if [ -z "$USER_INPUT" ]; then
-        echo -e "${RED}❌ Error: Domain cannot be empty.${NC}"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ SSL Generation failed. Aborting setup.${NC}"
         exit 1
     fi
-    
-    DOMAIN_VAR=$USER_INPUT
-    
-    if [ ! -f "$ENV_FILE" ]; then
-        echo "DOMAIN=$DOMAIN_VAR" > "$ENV_FILE"
-        echo -e "${GREEN}✅ Created .env file with DOMAIN=$DOMAIN_VAR${NC}"
-    else
-        echo "" >> "$ENV_FILE"
-        echo "DOMAIN=$DOMAIN_VAR" >> "$ENV_FILE"
-        echo -e "${GREEN}✅ Added DOMAIN to existing .env${NC}"
+}
+
+generate_nginx_config() {
+    local nginx_conf_dir="./configs"
+    local nginx_conf_file="$nginx_conf_dir/nginx.conf"
+
+    if [ -f "$nginx_conf_file" ]; then
+        echo -e "${YELLOW}⚠️  Nginx configuration already exists at $nginx_conf_file.${NC}"
+        read -r -p "👉 Do you want to overwrite it? (y/N): " REGEN_NGINX
+        
+        if [[ ! "$REGEN_NGINX" =~ ^[Yy]$ ]]; then
+            echo -e "${GREEN}✅ Skipping Nginx configuration generation.${NC}"
+            return 0 
+        fi
     fi
-fi
 
-CLEAN_DOMAIN="${DOMAIN_VAR#*://}"
-CLEAN_DOMAIN="${CLEAN_DOMAIN%/}"
+    echo -e "${YELLOW}⚙️  Generating Nginx configuration...${NC}"
+    mkdir -p "$nginx_conf_dir"
 
-echo -e "${GREEN}🎯 Target Domain: $CLEAN_DOMAIN${NC}"
-
-SSL_SCRIPT="./scripts/gen-ssl.sh"
-
-if [ ! -f "$SSL_SCRIPT" ]; then
-    echo -e "${RED}❌ Error: $SSL_SCRIPT not found in current directory.${NC}"
-    exit 1
-fi
-
-echo -e "${YELLOW}🔐 Running SSL generation script...${NC}"
-chmod +x "$SSL_SCRIPT"
-./"$SSL_SCRIPT" "$CLEAN_DOMAIN"
-SSL_EXIT_CODE=$?
-
-if [ $SSL_EXIT_CODE -ne 0 ]; then
-    echo -e "${RED}❌ SSL Generation failed. Aborting setup.${NC}"
-    exit 1
-fi
-
-NGINX_CONF_DIR="./configs"
-NGINX_CONF_FILE="$NGINX_CONF_DIR/nginx.conf"
-
-echo -e "${YELLOW}⚙️  Generating Nginx configuration...${NC}"
-
-mkdir -p "$NGINX_CONF_DIR"
-
-cat > "$NGINX_CONF_FILE" <<EOF
+    cat > "$nginx_conf_file" <<EOF
 server {
     listen 80;
     server_name $CLEAN_DOMAIN;
@@ -138,18 +160,29 @@ server {
 }
 EOF
 
-echo -e "${GREEN}✅ Nginx configuration saved to: $NGINX_CONF_FILE${NC}"
+    echo -e "${GREEN}✅ Nginx configuration saved to: $nginx_conf_file${NC}"
+}
 
-echo ""
-echo -e "${GREEN}╔══════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║                   SETUP COMPLETE                     ║${NC}"
-echo -e "${GREEN}╚══════════════════════════════════════════════════════╝${NC}"
-echo -e "${MAGENTA}Script by Mr.MKZ${NC}"
-echo ""
-echo -e "1. Ensure your ${YELLOW}docker-compose.yml${NC} nginx maps the volumes correctly:"
-echo -e "   - ${YELLOW}./ssl:/etc/nginx/ssl:ro${NC}"
-echo -e "   - ${YELLOW}./configs/nginx.conf:/etc/nginx/conf.d/default.conf${NC}"
-echo ""
-echo -e "2. Start your containers:"
-echo -e "   ${YELLOW}docker compose up -d --build --remove-orphans${NC}"
-echo ""
+print_success_message() {
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                   SETUP COMPLETE                     ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════╝${NC}"
+    echo -e "${MAGENTA}Script by Mr.MKZ${NC}"
+    echo ""
+    echo -e "1. Ensure your ${YELLOW}docker-compose.yml${NC} nginx maps the volumes correctly:"
+    echo -e "   - ${YELLOW}./ssl:/etc/nginx/ssl:ro${NC}"
+    echo -e "   - ${YELLOW}./configs/nginx.conf:/etc/nginx/conf.d/default.conf${NC}"
+    echo ""
+    echo -e "2. Start your containers:"
+    echo -e "   ${YELLOW}docker compose up -d --build --remove-orphans${NC}"
+    echo ""
+}
+
+echo -e "${GREEN}🚀 Starting Environment Setup...${NC}"
+
+check_dependencies
+setup_domain
+generate_ssl
+generate_nginx_config
+print_success_message
