@@ -13,6 +13,11 @@ fi
 
 echo -e "${GREEN}🚀 Starting Environment Setup...${NC}"
 
+if [ -f "$ENV_FILE" ]; then
+    export "$(grep -v '^#' "$ENV_FILE" | xargs)"
+    DOMAIN_VAR=$DOMAIN
+fi
+
 echo -e "${YELLOW}🔍 Checking dependencies...${NC}"
 DEPENDENCIES=(docker curl sed)
 for cmd in "${DEPENDENCIES[@]}"; do
@@ -110,7 +115,7 @@ server {
     location ~ \.php$ {
         try_files \$uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass $BOT_HOST:9000;
+        fastcgi_pass ${BOT_HOST:-app}:9000;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
@@ -118,7 +123,7 @@ server {
     }
 
     location ^~ /phpmyadmin/ {
-        proxy_pass http://$PMA_HOST:80/;
+        proxy_pass http://${PMA_HOST:-pma}:80/;
 
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
